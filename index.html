@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#050505">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Clock Memo">
+  <title>Clock Memo</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #050505;
+      --panel: rgba(255, 255, 255, .09);
+      --panel-strong: rgba(255, 255, 255, .15);
+      --text: #f5f5f2;
+      --muted: rgba(245, 245, 242, .58);
+      --line: rgba(255, 255, 255, .18);
+      --accent: #f5f5f2;
+      --memo-bg: rgba(255, 255, 255, .96);
+      --memo-text: #101010;
+    }
+
+    :root[data-theme="blue"] {
+      --bg: #071522;
+      --panel: rgba(117, 188, 255, .10);
+      --panel-strong: rgba(117, 188, 255, .18);
+      --text: #eaf5ff;
+      --muted: rgba(208, 234, 255, .62);
+      --line: rgba(140, 201, 255, .24);
+      --accent: #76bdff;
+      --memo-bg: rgba(225, 242, 255, .96);
+      --memo-text: #071522;
+    }
+
+    :root[data-theme="amber"] {
+      --bg: #1c1005;
+      --panel: rgba(255, 181, 74, .10);
+      --panel-strong: rgba(255, 181, 74, .18);
+      --text: #fff3dc;
+      --muted: rgba(255, 224, 177, .62);
+      --line: rgba(255, 190, 92, .25);
+      --accent: #ffb84d;
+      --memo-bg: rgba(255, 241, 213, .97);
+      --memo-text: #241405;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      overscroll-behavior: none;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Hiragino Sans", "Yu Gothic", sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      transition: background-color .25s ease, color .25s ease;
+    }
+
+    button, textarea { font: inherit; }
+
+    .app {
+      position: relative;
+      width: 100%;
+      height: 100svh;
+      min-height: 100%;
+      padding: max(14px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+      isolation: isolate;
+    }
+
+    .clock-wrap {
+      position: absolute;
+      inset: 7% 3% 25% 3%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+
+    .clock {
+      display: flex;
+      align-items: baseline;
+      justify-content: center;
+      font-family: "Helvetica Neue", Arial, sans-serif;
+      font-size: clamp(5rem, 22.5vw, 17rem);
+      font-weight: 200;
+      line-height: .82;
+      letter-spacing: 0;
+      font-variant-numeric: tabular-nums;
+      text-shadow: 0 0 42px color-mix(in srgb, var(--accent) 12%, transparent);
+    }
+
+    .clock-main {
+      display: flex;
+      align-items: baseline;
+      gap: .075em;
+    }
+
+    .digits {
+      letter-spacing: .025em;
+    }
+
+    .colon {
+      position: relative;
+      top: -.055em;
+      width: .22em;
+      color: var(--muted);
+      font-size: .78em;
+      font-weight: 300;
+      line-height: 1;
+      text-align: center;
+    }
+
+    .seconds {
+      min-width: 1.75em;
+      margin-left: .22em;
+      color: var(--accent);
+      font-size: .29em;
+      font-weight: 450;
+      letter-spacing: .035em;
+    }
+
+    .memo {
+      position: absolute;
+      right: max(2.4%, env(safe-area-inset-right));
+      bottom: max(5%, env(safe-area-inset-bottom));
+      width: min(45vw, 650px);
+      min-width: 250px;
+    }
+
+    .memo textarea {
+      display: block;
+      width: 100%;
+      height: clamp(5.2rem, 18vh, 8.5rem);
+      resize: none;
+      overflow: auto;
+      border: 1px solid transparent;
+      border-radius: 14px;
+      outline: none;
+      padding: .62em .78em;
+      background: var(--memo-bg);
+      color: var(--memo-text);
+      box-shadow: 0 15px 45px rgba(0, 0, 0, .26);
+      font-size: clamp(1.05rem, 3.1vw, 2.15rem);
+      font-weight: 500;
+      line-height: 1.45;
+      caret-color: var(--memo-text);
+      transition: box-shadow .2s ease, transform .2s ease;
+    }
+
+    .memo textarea::placeholder { color: color-mix(in srgb, var(--memo-text) 44%, transparent); }
+    .memo textarea:focus { box-shadow: 0 0 0 3px var(--accent), 0 18px 55px rgba(0, 0, 0, .34); }
+
+    .toolbar {
+      position: absolute;
+      z-index: 5;
+      top: max(14px, env(safe-area-inset-top));
+      right: max(16px, env(safe-area-inset-right));
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--bg) 64%, transparent);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, .16);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      opacity: .38;
+      transition: opacity .2s ease, background .25s ease;
+    }
+
+    .toolbar:hover, .toolbar:focus-within { opacity: 1; }
+
+    .icon-button, .swatch {
+      display: grid;
+      place-items: center;
+      width: 42px;
+      height: 42px;
+      padding: 0;
+      border: 0;
+      border-radius: 50%;
+      color: var(--text);
+      background: transparent;
+      cursor: pointer;
+    }
+
+    .icon-button:active { background: var(--panel-strong); transform: scale(.94); }
+    .icon-button:focus-visible, .swatch:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+    .icon-button svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+
+    .palette {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      max-width: 0;
+      overflow: hidden;
+      opacity: 0;
+      transition: max-width .24s ease, opacity .18s ease, margin .24s ease;
+    }
+
+    .toolbar.palette-open { opacity: 1; }
+    .toolbar.palette-open .palette { max-width: 135px; margin-left: 3px; opacity: 1; }
+
+    .swatch {
+      width: 30px;
+      height: 30px;
+      border: 2px solid rgba(255, 255, 255, .28);
+    }
+    .swatch[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--text); }
+    .swatch[data-set-theme="black"] { background: #050505; }
+    .swatch[data-set-theme="blue"] { background: #0b385d; }
+    .swatch[data-set-theme="amber"] { background: #874a0b; }
+
+    .toast {
+      position: absolute;
+      z-index: 10;
+      left: 50%;
+      bottom: max(22px, env(safe-area-inset-bottom));
+      width: min(90vw, 560px);
+      padding: 12px 16px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: color-mix(in srgb, var(--bg) 84%, var(--text) 16%);
+      color: var(--text);
+      box-shadow: 0 16px 45px rgba(0, 0, 0, .4);
+      font-size: .94rem;
+      line-height: 1.45;
+      text-align: center;
+      transform: translate(-50%, 24px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .2s ease, transform .2s ease;
+    }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+    @media (orientation: portrait) {
+      .clock-wrap { inset: 12% 3% 39% 3%; }
+      .clock { font-size: clamp(4.8rem, 23vw, 10rem); }
+      .memo { left: 6%; right: 6%; bottom: max(7%, env(safe-area-inset-bottom)); width: auto; min-width: 0; }
+      .memo textarea { height: 23vh; font-size: clamp(1.1rem, 5vw, 1.8rem); }
+    }
+
+    @media (max-height: 440px) and (orientation: landscape) {
+      .clock-wrap { inset: 8% 5% 25% 2%; }
+      .clock { font-size: clamp(4.8rem, 21.5vw, 9.6rem); }
+      .memo { width: min(43vw, 520px); bottom: max(4%, env(safe-area-inset-bottom)); }
+      .memo textarea { height: clamp(4.4rem, 22vh, 6.2rem); font-size: clamp(1rem, 2.7vw, 1.55rem); border-radius: 11px; }
+      .toolbar { top: max(8px, env(safe-area-inset-top)); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app" aria-label="時計とメモ">
+    <div class="clock-wrap" aria-live="off">
+      <time class="clock" id="clock">
+        <span class="clock-main">
+          <span class="digits" id="hours">00</span>
+          <span class="colon" aria-hidden="true">:</span>
+          <span class="digits" id="minutes">00</span>
+        </span>
+        <span class="seconds" id="seconds">00</span>
+      </time>
+    </div>
+
+    <section class="memo" aria-label="メモ">
+      <textarea id="memo" maxlength="180" aria-label="メモを入力" placeholder="メモをここに入力"></textarea>
+    </section>
+
+    <nav class="toolbar" id="toolbar" aria-label="表示設定">
+      <div class="palette" id="palette" aria-label="テーマカラー">
+        <button class="swatch" type="button" data-set-theme="black" aria-label="ブラック" aria-pressed="true"></button>
+        <button class="swatch" type="button" data-set-theme="blue" aria-label="ブルー" aria-pressed="false"></button>
+        <button class="swatch" type="button" data-set-theme="amber" aria-label="アンバー" aria-pressed="false"></button>
+      </div>
+      <button class="icon-button" id="themeButton" type="button" aria-label="色を変更" aria-expanded="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18h1.2a1.8 1.8 0 0 0 0-3.6h-.7a1.5 1.5 0 0 1 0-3H15A6 6 0 0 0 15 3h-3Z"/><circle cx="7.5" cy="10" r=".7" fill="currentColor" stroke="none"/><circle cx="10" cy="6.8" r=".7" fill="currentColor" stroke="none"/><circle cx="14.2" cy="6.7" r=".7" fill="currentColor" stroke="none"/><circle cx="17" cy="9.5" r=".7" fill="currentColor" stroke="none"/></svg>
+      </button>
+      <button class="icon-button" id="fullscreenButton" type="button" aria-label="フルスクリーンにする">
+        <svg id="fullscreenIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 4H4v4.5M15.5 4H20v4.5M20 15.5V20h-4.5M8.5 20H4v-4.5"/></svg>
+      </button>
+    </nav>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  </main>
+
+  <script>
+    (() => {
+      'use strict';
+
+      const root = document.documentElement;
+      const hours = document.getElementById('hours');
+      const minutes = document.getElementById('minutes');
+      const seconds = document.getElementById('seconds');
+      const memo = document.getElementById('memo');
+      const toolbar = document.getElementById('toolbar');
+      const palette = document.getElementById('palette');
+      const themeButton = document.getElementById('themeButton');
+      const fullscreenButton = document.getElementById('fullscreenButton');
+      const fullscreenIcon = document.getElementById('fullscreenIcon');
+      const toast = document.getElementById('toast');
+      const themes = ['black', 'blue', 'amber'];
+      let toastTimer;
+
+      function updateClock() {
+        const now = new Date();
+        const h = String(now.getHours()).padStart(2, '0');
+        const m = String(now.getMinutes()).padStart(2, '0');
+        const s = String(now.getSeconds()).padStart(2, '0');
+        hours.textContent = h;
+        minutes.textContent = m;
+        seconds.textContent = s;
+        document.getElementById('clock').dateTime = now.toISOString();
+      }
+
+      function scheduleClock() {
+        updateClock();
+        setTimeout(scheduleClock, 1000 - (Date.now() % 1000) + 10);
+      }
+
+      function storageGet(key, fallback = '') {
+        try { return localStorage.getItem(key) ?? fallback; } catch (_) { return fallback; }
+      }
+
+      function storageSet(key, value) {
+        try { localStorage.setItem(key, value); } catch (_) {}
+      }
+
+      function setTheme(theme) {
+        const safeTheme = themes.includes(theme) ? theme : 'black';
+        if (safeTheme === 'black') root.removeAttribute('data-theme');
+        else root.dataset.theme = safeTheme;
+        document.querySelectorAll('[data-set-theme]').forEach((button) => {
+          button.setAttribute('aria-pressed', String(button.dataset.setTheme === safeTheme));
+        });
+        const themeColors = { black: '#050505', blue: '#071522', amber: '#1c1005' };
+        document.querySelector('meta[name="theme-color"]').content = themeColors[safeTheme];
+        storageSet('clockMemoTheme', safeTheme);
+      }
+
+      function showToast(message) {
+        clearTimeout(toastTimer);
+        toast.textContent = message;
+        toast.classList.add('show');
+        toastTimer = setTimeout(() => toast.classList.remove('show'), 4200);
+      }
+
+      function isStandalone() {
+        return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+      }
+
+      function updateFullscreenButton() {
+        const active = Boolean(document.fullscreenElement) || isStandalone();
+        fullscreenButton.setAttribute('aria-label', active ? 'フルスクリーンを終了' : 'フルスクリーンにする');
+        fullscreenIcon.innerHTML = active
+          ? '<path d="M9 4v5H4M15 4v5h5M20 15h-5v5M4 15h5v5"/>'
+          : '<path d="M8.5 4H4v4.5M15.5 4H20v4.5M20 15.5V20h-4.5M8.5 20H4v-4.5"/>';
+      }
+
+      async function toggleFullscreen() {
+        if (document.fullscreenElement) {
+          try { await document.exitFullscreen(); } catch (_) {}
+          return;
+        }
+
+        if (isStandalone()) {
+          showToast('ホーム画面から起動中のため、すでにフルスクリーンです。');
+          return;
+        }
+
+        if (document.documentElement.requestFullscreen) {
+          try {
+            await document.documentElement.requestFullscreen();
+            return;
+          } catch (_) {}
+        }
+
+        showToast('Safariでは「共有」→「ホーム画面に追加」から開くと、タブなしで表示できます。');
+      }
+
+      themeButton.addEventListener('click', () => {
+        const open = toolbar.classList.toggle('palette-open');
+        themeButton.setAttribute('aria-expanded', String(open));
+      });
+
+      palette.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-set-theme]');
+        if (!button) return;
+        setTheme(button.dataset.setTheme);
+        toolbar.classList.remove('palette-open');
+        themeButton.setAttribute('aria-expanded', 'false');
+      });
+
+      fullscreenButton.addEventListener('click', toggleFullscreen);
+      document.addEventListener('fullscreenchange', updateFullscreenButton);
+      memo.addEventListener('input', () => storageSet('clockMemoText', memo.value));
+
+      memo.value = storageGet('clockMemoText');
+      setTheme(storageGet('clockMemoTheme', 'black'));
+      updateFullscreenButton();
+      scheduleClock();
+    })();
+  </script>
+</body>
+</html>
